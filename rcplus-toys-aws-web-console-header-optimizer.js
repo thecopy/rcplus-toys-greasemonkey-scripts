@@ -23,14 +23,16 @@
   //
   async function replaceUsername() {
     try {
-      const usernameNode = await waitForElement(document, 'button#nav-usernameMenu > span > span', 'title')
-      const idTitle = usernameNode.title
-      let re = /\w+_([\w-]+)_(\w+)\/.*\s+@\s+(.+)/;
-      let results = re.exec(idTitle);
-      let role = results[1];
-      let account = results[3];
+
+      const metaNode = await waitForElement(document, 'meta[name="awsc-session-data"]', 'content')
+			const meta = JSON.parse(metaNode.content)
+      const account = meta.accountAlias;
+      const username = meta.sessionARN.substring(meta.sessionARN.lastIndexOf('/')+1)
+      const role = meta.sessionARN.substring(meta.sessionARN.indexOf('/')+1, meta.sessionARN.lastIndexOf('/')).split('_')[1]
+      const usernameNode = await waitForElement(document, 'button#nav-usernameMenu > span > span')
       usernameNode.innerHTML = `${role} @ ${account}`;
     } catch (err) {
+      console.error(err)
       console.log('[rcplus-toys] the current user does not seem like a RC+ SSO user. Error: ' + err);
     }
   }
@@ -43,13 +45,13 @@
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => reject(`did not find ${selector} within 5 seconds`), 5e3)
       const initial_check = parent.querySelector(selector);
-      if (initial_check && (!attribute || initial_check[attribute])) {
+      if (initial_check && (!attribute || (attribute in initial_check && initial_check[attribute]))) {
         clearTimeout(timeout)
         return resolve(initial_check);
       }
       const observer = new MutationObserver((mutation) => {
         const repeating_check = parent.querySelector(selector);
-        if (repeating_check && (!attribute || repeating_check[attribute])) {
+        if (repeating_check && (!attribute || (attribute in repeating_check && repeating_check[attribute]))) {
           observer.disconnect();
           clearTimeout(timeout)
           resolve(repeating_check);
